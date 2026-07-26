@@ -109,23 +109,25 @@
 
   .marker {
     position: absolute;
-    width: 34px;
-    height: 34px;
-    margin-left: -17px;
-    margin-top: -17px;
+    /* Sized relative to the image's own rendered width, so the marker
+       covers the same proportion of the map on every device instead of
+       being a fixed pixel size (too big on phones, too small on wide
+       screens). Centered with transform so it works at any size. */
+    width: 5.6%;
+    aspect-ratio: 1 / 1;
     border-radius: 50%;
     border: 1.5px solid var(--amber);
     backdrop-filter: invert(1);
     -webkit-backdrop-filter: invert(1);
     pointer-events: none;
     opacity: 0;
-    transform: scale(0.7);
+    transform: translate(-50%, -50%) scale(0.7);
     animation: appear 0.2s ease-out forwards;
   }
 
   @keyframes appear {
-    from { opacity: 0; transform: scale(0.7); }
-    to { opacity: 1; transform: scale(1); }
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   }
 
   .coords {
@@ -175,6 +177,11 @@
     transition: border-color 0.12s ease, color 0.12s ease;
   }
 
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   #check-button {
     border: 1px solid var(--amber);
     color: var(--amber-bright);
@@ -200,7 +207,7 @@
   .feedback.wrong { color: var(--miss); }
 
   @media (prefers-reduced-motion: reduce) {
-    .marker { animation: none; opacity: 1; transform: scale(1); }
+    .marker { animation: none; opacity: 1; transform: translate(-50%, -50%) scale(1); }
   }
 </style>
 </head>
@@ -221,15 +228,15 @@
         <div id="marker" class="marker" hidden></div>
       </div>
 
-      <div id="coords" class="coords">Press &ldquo;New Spot&rdquo; to begin</div>
+      <div id="coords" class="coords">Loading map&hellip;</div>
 
       <div class="controls">
-        <input id="answer-input" type="text" placeholder="Type the callout name" autocomplete="off" />
-        <button id="check-button" type="button">Check</button>
-        <button id="next-button" type="button">New Spot</button>
+        <input id="answer-input" type="text" placeholder="Type the callout name" autocomplete="off" disabled />
+        <button id="check-button" type="button" disabled>Check</button>
+        <button id="next-button" type="button" disabled>New Spot</button>
       </div>
 
-      <div id="feedback" class="feedback">Click the image to drop a practice marker, or press &ldquo;New Spot&rdquo; to begin.</div>
+      <div id="feedback" class="feedback">Loading map image&hellip;</div>
     </div>
   </div>
 
@@ -285,19 +292,32 @@
     // 600px width (its old max-width), not the PNG's raw pixel resolution.
     // We rebuild that same reference frame (600 wide, height from the
     // image's real aspect ratio) and convert to percentages from there.
+    //
+    // IMPORTANT: naturalWidth/naturalHeight are cached once, the moment the
+    // image finishes loading, and every control is disabled until then. This
+    // is the fix for the "marker lands in a totally different spot on
+    // phone vs desktop" bug: previously, if a button was pressed before the
+    // image had finished loading (much more likely on a slow mobile
+    // connection), naturalWidth/naturalHeight were both 0, so the code
+    // silently fell back to treating the map as a SQUARE image. That wrong
+    // aspect ratio threw every Y coordinate off by a large, inconsistent
+    // amount -- which looks exactly like "the marker is in a different
+    // place on my phone." Now we simply never place a marker until the
+    // real dimensions are known, on any device.
     const REFERENCE_WIDTH = 600;
+    let referenceHeight = null; // set once, from the real image, before anything else can run
 
-    function getReferenceHeight() {
-      const naturalW = image.naturalWidth || 0;
-      const naturalH = image.naturalHeight || 0;
-      if (!naturalW || !naturalH) return REFERENCE_WIDTH; // fallback until loaded
+    function computeReferenceHeight() {
+      const naturalW = image.naturalWidth;
+      const naturalH = image.naturalHeight;
+      if (!naturalW || !naturalH) return null;
       return REFERENCE_WIDTH * (naturalH / naturalW);
     }
 
     function placeMarkerAtReferenceCoords(rx, ry) {
-      const refH = getReferenceHeight();
+      if (!referenceHeight) return; // safety net: never place with unknown aspect ratio
       const pctX = (rx / REFERENCE_WIDTH) * 100;
-      const pctY = (ry / refH) * 100;
+      const pctY = (ry / referenceHeight) * 100;
 
       marker.hidden = false;
       marker.style.left = `${pctX}%`;
@@ -306,9 +326,10 @@
     }
 
     function placeMarkerAtDisplayCoords(dx, dy) {
+      if (!referenceHeight) return;
       const rect = image.getBoundingClientRect();
       const rx = (dx / rect.width) * REFERENCE_WIDTH;
-      const ry = (dy / rect.height) * getReferenceHeight();
+      const ry = (dy / rect.height) * referenceHeight;
       placeMarkerAtReferenceCoords(rx, ry);
     }
 
@@ -323,14 +344,14 @@
     }
 
     function showNewPreset() {
+      if (!referenceHeight) return; // guard: controls should be disabled anyway
       const idx = pickRandomPreset();
       currentPreset = presets[idx];
 
       placeMarkerAtReferenceCoords(currentPreset.x, currentPreset.y);
 
       answerInput.value = '';
-      feedback.textContent = 'Type the callout name and press Check.';
-      feedback.className = 'feedback';
+      setFeedback('Type the callout name and press Check.', null);
       answerInput.focus();
     }
 
@@ -339,9 +360,16 @@
       feedback.className = state ? `feedback ${state}` : 'feedback';
     }
 
+    function enableControls() {
+      answerInput.disabled = false;
+      checkButton.disabled = false;
+      nextButton.disabled = false;
+    }
+
     nextButton.addEventListener('click', showNewPreset);
 
     image.addEventListener('click', (event) => {
+      if (!referenceHeight) return;
       const rect = image.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
@@ -386,10 +414,25 @@
       }
     });
 
-    if (image.complete && image.naturalWidth) {
+    function onImageReady() {
+      referenceHeight = computeReferenceHeight();
+      if (!referenceHeight) {
+        // Extremely unlikely (image "loaded" but reports 0 dimensions),
+        // but fail loudly instead of guessing a wrong aspect ratio.
+        setFeedback('Could not read the map image dimensions. Try reloading.', 'wrong');
+        return;
+      }
+      enableControls();
       showNewPreset();
+    }
+
+    if (image.complete && image.naturalWidth) {
+      onImageReady();
     } else {
-      image.addEventListener('load', showNewPreset, { once: true });
+      image.addEventListener('load', onImageReady, { once: true });
+      image.addEventListener('error', () => {
+        setFeedback('Map image failed to load.', 'wrong');
+      }, { once: true });
     }
   </script>
 </body>
