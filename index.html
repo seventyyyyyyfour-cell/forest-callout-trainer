@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Forest Callouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f0c;
+    --panel: #101511;
+    --line: #3d4a3f;
+    --line-bright: #7c9473;
+    --amber: #e0a458;
+    --amber-bright: #f2c380;
+    --cream: #f1ead9;
+    --cream-dim: #a9ac9f;
+    --miss: #d9776a;
+    --hit: #97c982;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 16px;
+    background: var(--bg);
+    font-family: 'Work Sans', sans-serif;
+    color: var(--cream);
+  }
+
+  .wrap {
+    width: min(92vw, 780px);
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--amber);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    text-align: center;
+    margin: 0 0 6px;
+    color: var(--cream);
+    letter-spacing: -0.01em;
+  }
+
+  .sub {
+    text-align: center;
+    color: var(--cream-dim);
+    font-size: 0.95rem;
+    margin: 0 0 22px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px;
+  }
+
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--cream-dim);
+  }
+
+  .stats div {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 14px;
+  }
+
+  .stats span { color: var(--amber-bright); font-weight: 600; }
+
+  .image-frame {
+    position: relative;
+    display: block;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--line-bright);
+    cursor: crosshair;
+    line-height: 0;
+  }
+
+  .image-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: saturate(0.9) contrast(1.02) brightness(0.96);
+  }
+
+  .marker {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    margin-left: -17px;
+    margin-top: -17px;
+    border-radius: 50%;
+    border: 1.5px solid var(--amber);
+    backdrop-filter: invert(1);
+    -webkit-backdrop-filter: invert(1);
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.7);
+    animation: appear 0.2s ease-out forwards;
+  }
+
+  @keyframes appear {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .coords {
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--cream-dim);
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+
+  .controls {
+    margin-top: 18px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  input {
+    padding: 11px 16px;
+    border: 1px solid var(--line);
+    background: transparent;
+    border-radius: 999px;
+    min-width: 240px;
+    font-size: 0.98rem;
+    color: var(--cream);
+    font-family: 'Work Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.12s ease;
+  }
+
+  input::placeholder { color: var(--cream-dim); opacity: 0.6; }
+
+  input:focus {
+    border-color: var(--amber);
+  }
+
+  button {
+    padding: 11px 20px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Work Sans', sans-serif;
+    background: transparent;
+    transition: border-color 0.12s ease, color 0.12s ease;
+  }
+
+  #check-button {
+    border: 1px solid var(--amber);
+    color: var(--amber-bright);
+  }
+  #check-button:hover { border-color: var(--amber-bright); }
+
+  #next-button {
+    border: 1px solid var(--line);
+    color: var(--line-bright);
+  }
+  #next-button:hover { border-color: var(--line-bright); }
+
+  .feedback {
+    margin-top: 16px;
+    font-weight: 600;
+    min-height: 24px;
+    text-align: center;
+    font-size: 0.98rem;
+    color: var(--cream-dim);
+  }
+
+  .feedback.correct { color: var(--hit); }
+  .feedback.wrong { color: var(--miss); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marker { animation: none; opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Seventy 4</div>
+    <h1>Callout Trainer</h1>
+    <p class="sub">A marker drops on the map. Name the callout before you check.</p>
+
+    <div class="card">
+      <div class="stats">
+        <div>Score: <span id="score">0</span> / <span id="attempts">0</span></div>
+        <div>Streak: <span id="streak">0</span></div>
+      </div>
+
+      <div class="image-frame" id="image-frame">
+        <img id="display-image" src="Map.png" alt="Forest map with callout locations" />
+        <div id="marker" class="marker" hidden></div>
+      </div>
+
+      <div id="coords" class="coords">Press &ldquo;New Spot&rdquo; to begin</div>
+
+      <div class="controls">
+        <input id="answer-input" type="text" placeholder="Type the callout name" autocomplete="off" />
+        <button id="check-button" type="button">Check</button>
+        <button id="next-button" type="button">New Spot</button>
+      </div>
+
+      <div id="feedback" class="feedback">Click the image to drop a practice marker, or press &ldquo;New Spot&rdquo; to begin.</div>
+    </div>
+  </div>
+
+  <script>
+    const image = document.getElementById('display-image');
+    const frame = document.getElementById('image-frame');
+    const marker = document.getElementById('marker');
+    const coords = document.getElementById('coords');
+    const answerInput = document.getElementById('answer-input');
+    const checkButton = document.getElementById('check-button');
+    const nextButton = document.getElementById('next-button');
+    const feedback = document.getElementById('feedback');
+    const scoreEl = document.getElementById('score');
+    const attemptsEl = document.getElementById('attempts');
+    const streakEl = document.getElementById('streak');
+
+    // Coordinates are measured against the image's natural (source) pixel size,
+    // then scaled to whatever size the image actually renders at.
+    const presets = [
+      { name: 'Pig Wall',      x: 206, y: 449 },
+      { name: 'Stump',         x: 172, y: 237 },
+      { name: 'Stump Wall',    x: 163, y: 160 },
+      { name: 'Ground',        x: 242, y: 241 },
+      { name: 'Gazebo',        x: 285, y: 261 },
+      { name: 'Proper',        x: 346, y: 267 },
+      { name: '2nd Tallest',   x: 301, y: 409 },
+      { name: 'Treehouse',     x: 386, y: 262 },
+      { name: 'Bagel',         x: 407, y: 323 },
+      { name: 'Sky',           x: 344, y: 366 },
+      { name: 'Smallest',      x: 351, y: 404 },
+      { name: 'Platforms',     x: 291, y: 377 },
+      { name: 'Tall Plat',     x: 293, y: 214 },
+      { name: 'Double Walls',  x: 321, y: 205 },
+      { name: 'Tallest',       x: 352, y: 170 },
+      { name: 'Back Wall',     x: 455, y: 344 },
+      { name: 'Death Wall',    x: 363, y: 446 },
+      { name: 'Bridge',        x: 307, y: 321 },
+      { name: 'Mid Tree',      x: 243, y: 363 },
+      { name: 'Blender',       x: 266, y: 369 },
+      { name: 'Dawn',          x: 220, y: 293 },
+      { name: 'Ramp',          x: 190, y: 309 },
+      { name: 'Apollo',        x: 392, y: 364 },
+      { name: 'Tall Wall',     x: 378, y: 142 },
+    ];
+
+    let currentPreset = null;
+    let score = 0;
+    let attempts = 0;
+    let streak = 0;
+    let lastRandomIndex = -1;
+
+    // Coordinates were captured against the image displayed at a fixed
+    // 600px width (its old max-width), not the PNG's raw pixel resolution.
+    // We rebuild that same reference frame (600 wide, height from the
+    // image's real aspect ratio) and convert to percentages from there.
+    const REFERENCE_WIDTH = 600;
+
+    function getReferenceHeight() {
+      const naturalW = image.naturalWidth || 0;
+      const naturalH = image.naturalHeight || 0;
+      if (!naturalW || !naturalH) return REFERENCE_WIDTH; // fallback until loaded
+      return REFERENCE_WIDTH * (naturalH / naturalW);
+    }
+
+    function placeMarkerAtReferenceCoords(rx, ry) {
+      const refH = getReferenceHeight();
+      const pctX = (rx / REFERENCE_WIDTH) * 100;
+      const pctY = (ry / refH) * 100;
+
+      marker.hidden = false;
+      marker.style.left = `${pctX}%`;
+      marker.style.top = `${pctY}%`;
+      coords.textContent = `X: ${Math.round(rx)}, Y: ${Math.round(ry)}`;
+    }
+
+    function placeMarkerAtDisplayCoords(dx, dy) {
+      const rect = image.getBoundingClientRect();
+      const rx = (dx / rect.width) * REFERENCE_WIDTH;
+      const ry = (dy / rect.height) * getReferenceHeight();
+      placeMarkerAtReferenceCoords(rx, ry);
+    }
+
+    function pickRandomPreset() {
+      if (presets.length === 1) return 0;
+      let idx;
+      do {
+        idx = Math.floor(Math.random() * presets.length);
+      } while (idx === lastRandomIndex);
+      lastRandomIndex = idx;
+      return idx;
+    }
+
+    function showNewPreset() {
+      const idx = pickRandomPreset();
+      currentPreset = presets[idx];
+
+      placeMarkerAtReferenceCoords(currentPreset.x, currentPreset.y);
+
+      answerInput.value = '';
+      feedback.textContent = 'Type the callout name and press Check.';
+      feedback.className = 'feedback';
+      answerInput.focus();
+    }
+
+    function setFeedback(text, state) {
+      feedback.textContent = text;
+      feedback.className = state ? `feedback ${state}` : 'feedback';
+    }
+
+    nextButton.addEventListener('click', showNewPreset);
+
+    image.addEventListener('click', (event) => {
+      const rect = image.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      placeMarkerAtDisplayCoords(x, y);
+      setFeedback('Practice marker placed. This isn\u2019t scored.', null);
+    });
+
+    checkButton.addEventListener('click', () => {
+      if (!currentPreset) {
+        setFeedback('Start by pressing "New Spot".', null);
+        return;
+      }
+
+      const guess = answerInput.value.trim().toLowerCase();
+      const correct = currentPreset.name.toLowerCase();
+
+      attempts += 1;
+
+      if (guess === correct) {
+        score += 1;
+        streak += 1;
+        setFeedback(`Correct "${currentPreset.name}".`, 'correct');
+      } else {
+        streak = 0;
+        setFeedback(`Not quite. That spot is "${currentPreset.name}".`, 'wrong');
+      }
+
+      scoreEl.textContent = score;
+      attemptsEl.textContent = attempts;
+      streakEl.textContent = streak;
+    });
+
+    answerInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        checkButton.click();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (currentPreset) {
+        placeMarkerAtReferenceCoords(currentPreset.x, currentPreset.y);
+      }
+    });
+
+    if (image.complete && image.naturalWidth) {
+      showNewPreset();
+    } else {
+      image.addEventListener('load', showNewPreset, { once: true });
+    }
+  </script>
+</body>
+</html>
